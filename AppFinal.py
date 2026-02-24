@@ -253,7 +253,7 @@ def predict_mmp(df_in: pd.DataFrame) -> pd.DataFrame:
     cf = build_cf_from_input(df_in)
 
     # Ensure model feature count alignment
-
+    X = cf.to_numpy(dtype=float)
 
     # RF prediction
     y = rf_predict(rf_model, X).reshape(-1)
