@@ -280,19 +280,39 @@ st.header("Input")
 
 st.markdown("**Enter the composition up to C7+, MWC7+ and Temperature (°C).**")
 
-uploaded = st.file_uploader("Upload the input CSV file here", type=["csv"])
+REQUIRED_COLS = [
+    "x_H2S (%)", "x_Co2 (%)", "x_N2 (%)", "x_C1 (%)", "x_C2 (%)", "x_C3 (%)",
+    "x_C4 (%)", "x_C5 (%)", "x_C6 (%)", "x_C7+ (%)", "MW c7+", "Tres (F)"
+]
 
 if uploaded is not None:
     try:
-        df_in = pd.read_csv(uploaded, header=None)
-        st.session_state["input_df"] = df_in
+        # 1) Try reading with header (most common)
+        df_try = pd.read_csv(uploaded)
+
+        if all(c in df_try.columns for c in REQUIRED_COLS):
+            # Keep only model inputs, in the exact order expected by your feature builder
+            df_in = df_try[REQUIRED_COLS].copy()
+        else:
+            # 2) Fallback: treat as headerless template (positional)
+            uploaded.seek(0)
+            df_in = pd.read_csv(uploaded, header=None)
+
+            # If someone accidentally included a header row in a headerless read, drop it
+            df_in = df_in.apply(pd.to_numeric, errors="coerce")
+            df_in = df_in.dropna(how="any")  # removes the header row (NaNs) and any bad rows
+
+        st.session_state["input_df"] = df_in.reset_index(drop=True)
+
         st.success("CSV loaded. Preview (first 10 rows):")
-        st.dataframe(df_in.head(10), use_container_width=True)
+        st.dataframe(st.session_state["input_df"].head(10), use_container_width=True)
+
     except Exception as e:
         st.error(f"Could not read CSV: {e}")
         st.stop()
 else:
     st.info("Upload a CSV to enable prediction.")
+
 
 run_clicked = st.button("Run prediction", type="primary", disabled=("input_df" not in st.session_state))
 
@@ -321,4 +341,5 @@ st.markdown("---")
 st.markdown(
     "**Reference:** Sinha, U., Dindoruk, B., & Soliman, M. (2021). Prediction of CO2 Minimum Miscibility Pressure Using an Augmented Machine-Learning-Based Model. SPE Journal, 1-13."
 )
+
 
