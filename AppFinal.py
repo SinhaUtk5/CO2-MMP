@@ -6,12 +6,12 @@ from pathlib import Path
 from PIL import Image
 import json
 
-st.set_page_config(page_title="UH-MMP Calculator", layout="wide")
+st.set_page_config(page_title="CO2 MMP Calculator", layout="wide")
 
 # --------------------------
 # Header / Title / Links
 # --------------------------
-st.title("UH-MMP Calculator")
+st.title("CO2 MMP Calculator")
 st.markdown("A product of Interaction of Phase-Behavior and Flow (IPB&F) Consortium")
 
 st.markdown("**Developed by** - Utkarsh Sinha, Dr. Birol Dindoruk and Dr. M.Y. Soliman")
@@ -318,6 +318,7 @@ st.markdown("---")
 st.markdown(
     "**Reference:** Sinha, U., Dindoruk, B., & Soliman, M. (2021). Prediction of CO2 Minimum Miscibility Pressure Using an Augmented Machine-Learning-Based Model. SPE Journal, 1-13."
 )
+
 
 
 
