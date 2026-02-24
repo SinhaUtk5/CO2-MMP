@@ -1,10 +1,4 @@
-remove the parts above  the input req text and model loaded notifcation
 
-
-Just say enter the composition up to C7+, MWC7+ and temperature (symb(Deg.) C) 
-
-
-# streamlit_co2_mmp.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -327,3 +321,4 @@ st.markdown("---")
 st.markdown(
     "**Reference:** Sinha, U., Dindoruk, B., & Soliman, M. (2021). Prediction of CO2 Minimum Miscibility Pressure Using an Augmented Machine-Learning-Based Model. SPE Journal, 1-13."
 )
+
