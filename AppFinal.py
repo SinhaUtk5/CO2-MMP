@@ -143,13 +143,6 @@ def build_cf_from_input(df: pd.DataFrame) -> pd.DataFrame:
     Returns cf with the same engineered columns used in R.
     """
 
-        # Ensure numeric (skip header automatically since pandas already used it)
-    df = df.apply(pd.to_numeric, errors="coerce")
-
-    if df.isnull().any().any():
-        raise ValueError("Non-numeric or missing values detected in input CSV.")
-
-    arr = df.to_numpy(dtype=float)
 
     # R-style 1-based indexing
     def col(i):
@@ -228,12 +221,12 @@ def build_cf_from_input(df: pd.DataFrame) -> pd.DataFrame:
 
     Part1 = A0 + A1 * H2S + A2 * Co2 + A3 * N2 + A4 * C1 + A5 * C2 + A6 * C3
     Part2 = A7 * C4 + C5 * A8 + C6 * A9 + C7p * A10 + A11 * frn
-    Part3 = A12 * (MWC7p) * (1 + A13 * np.power(col(11), -2.8) * np.power((col(10) / 100.0), -1.9))
+    Part3 = A12 * (MWC7p) * (1 + A13 * np.power(df["MW_C7+"], -2.8) * np.power((df["x_C7+ (%)"] / 100.0), -1.9))
     Part4 = (
         A14 * MW_oil
         + A15 * Tres
         + A15 * A16 * Tsq
-        + A17 * np.exp(8.243 / (1 + 0.002177 * col(12)) - 10.91)
+        + A17 * np.exp(8.243 / (1 + 0.002177 * df["Temperature (C)"]) - 10.91)
     )
     Pred = Part1 + Part2 + Part3 + Part4
 
@@ -337,6 +330,7 @@ st.markdown("---")
 st.markdown(
     "**Reference:** Sinha, U., Dindoruk, B., & Soliman, M. (2021). Prediction of CO2 Minimum Miscibility Pressure Using an Augmented Machine-Learning-Based Model. SPE Journal, 1-13."
 )
+
 
 
 
