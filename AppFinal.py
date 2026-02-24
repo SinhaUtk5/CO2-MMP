@@ -148,7 +148,7 @@ def build_cf_from_input(df: pd.DataFrame) -> pd.DataFrame:
     df = df.apply(pd.to_numeric, errors="coerce")
 
     H2S = np.power(df["x_H2S (%)"], 0.8)
-    Co2 = np.power(df["x_CO2 (%)"], 1.38)
+    Co2 = np.power(df["x_Co2 (%)"], 1.38)
     N2  = df["x_N2 (%)"]
 
     C1 = np.power(df["x_C1 (%)"], 0.7)
@@ -166,7 +166,7 @@ def build_cf_from_input(df: pd.DataFrame) -> pd.DataFrame:
 
     MW_oil1 = (
         df["x_H2S (%)"] * 34.1
-        + df["x_CO2 (%)"] * 44.01
+        + df["x_Co2 (%)"] * 44.01
         + df["x_C1 (%)"] * 16.04
         + df["x_C2 (%)"] * 30.07
         + df["x_N2 (%)"] * 28.0134
@@ -183,7 +183,7 @@ def build_cf_from_input(df: pd.DataFrame) -> pd.DataFrame:
     MW_ap_C7p  = np.power(MW_ap_C7p1, -1.9)
     
     frn1 = (1 + df["x_N2 (%)"] + df["x_C1 (%)"]) / (
-        1 + df["x_H2S (%)"] + df["x_CO2 (%)"]
+        1 + df["x_H2S (%)"] + df["x_Co2 (%)"]
         + df["x_C2 (%)"] + df["x_C3 (%)"]
         + df["x_C4 (%)"] + df["x_C5 (%)"]
         + df["x_C6 (%)"]
@@ -327,6 +327,7 @@ st.markdown("---")
 st.markdown(
     "**Reference:** Sinha, U., Dindoruk, B., & Soliman, M. (2021). Prediction of CO2 Minimum Miscibility Pressure Using an Augmented Machine-Learning-Based Model. SPE Journal, 1-13."
 )
+
 
 
 
