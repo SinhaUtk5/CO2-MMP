@@ -144,12 +144,6 @@ def build_cf_from_input(df: pd.DataFrame) -> pd.DataFrame:
     """
 
 
-    # R-style 1-based indexing
-    def col(i):
-        return arr[:, i - 1]
-    # Force numeric conversion (safe)
-    df = df.apply(pd.to_numeric, errors="coerce")
-
     H2S = np.power(df["x_H2S (%)"], 0.8)
     Co2 = np.power(df["x_Co2 (%)"], 1.38)
     N2  = df["x_N2 (%)"]
@@ -259,13 +253,7 @@ def predict_mmp(df_in: pd.DataFrame) -> pd.DataFrame:
     cf = build_cf_from_input(df_in)
 
     # Ensure model feature count alignment
-    X = cf.to_numpy(dtype=float)
-    expected = rf_model.get("n_features", X.shape[1])
-    if X.shape[1] != expected:
-        raise ValueError(
-            f"Feature count mismatch. Model expects n_features={expected}, but computed features={X.shape[1]}.\n"
-            f"Computed columns: {list(cf.columns)}"
-        )
+
 
     # RF prediction
     y = rf_predict(rf_model, X).reshape(-1)
@@ -330,6 +318,7 @@ st.markdown("---")
 st.markdown(
     "**Reference:** Sinha, U., Dindoruk, B., & Soliman, M. (2021). Prediction of CO2 Minimum Miscibility Pressure Using an Augmented Machine-Learning-Based Model. SPE Journal, 1-13."
 )
+
 
 
 
