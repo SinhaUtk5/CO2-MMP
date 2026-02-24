@@ -283,18 +283,10 @@ st.markdown("**Enter the composition up to C7+, MWC7+ and Temperature (°C).**")
 
 uploaded = st.file_uploader("Upload the input CSV file here", type=["csv"])
 if uploaded is not None:
-    try:
-        # IMPORTANT: match your “headerless positional columns” assumption
-        input_df = pd.read_csv(uploaded, header=None)
-
-        # Drop totally empty columns (common when CSV has a trailing comma)
-        input_df = input_df.dropna(axis=1, how="all")
-
-        st.session_state["input_df"] = input_df
-        st.success(f"Loaded CSV with shape: {input_df.shape} (rows, cols)")
-        st.dataframe(input_df.head(), use_container_width=True)
-    except Exception as e:
-        st.error(f"Could not read CSV: {e}")
+    df_in = pd.read_csv(uploaded)  # keep headers
+    st.session_state["input_df"] = df_in
+    st.success(f"Loaded CSV with shape: {df_in.shape}")
+    st.dataframe(df_in.head(), use_container_width=True)
 
 
 
@@ -325,6 +317,7 @@ st.markdown("---")
 st.markdown(
     "**Reference:** Sinha, U., Dindoruk, B., & Soliman, M. (2021). Prediction of CO2 Minimum Miscibility Pressure Using an Augmented Machine-Learning-Based Model. SPE Journal, 1-13."
 )
+
 
 
 
