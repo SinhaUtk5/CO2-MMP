@@ -24,7 +24,7 @@ st.markdown(
 )
 st.markdown(
     "1) **Download the example input CSV template file**: "
-    "[Click here](https://drive.google.com/file/d/1S60FPJcZbqxhCGJ3xTUMhniTqZK0jHC2/view?usp=sharing)"
+    "[Click here](https://drive.google.com/file/d/1oJSyKt4mgLneLXljq6nPGW0BAZ4JgA8z/view?usp=sharing)"
 )
 st.markdown(
     "2) **Watch short help video (no sound)**: "
@@ -318,6 +318,7 @@ st.markdown("---")
 st.markdown(
     "**Reference:** Sinha, U., Dindoruk, B., & Soliman, M. (2021). Prediction of CO2 Minimum Miscibility Pressure Using an Augmented Machine-Learning-Based Model. SPE Journal, 1-13."
 )
+
 
 
 
