@@ -142,49 +142,59 @@ def build_cf_from_input(df: pd.DataFrame) -> pd.DataFrame:
     Input df must be positional columns exactly like Shiny app (>=12 cols), headerless.
     Returns cf with the same engineered columns used in R.
     """
-    if df.shape[1] < 12:
-        raise ValueError("Input CSV must contain at least 12 columns (positional). Use the template.")
 
-    arr = df.astype(float).to_numpy()
-    col = lambda i: arr[:, i - 1]  # R 1-based -> Python 0-based
 
-    H2S = np.power(col(1), 0.8)
-    N2 = col(3)
-    Co2 = np.power(col(2), 1.38)
-    C1 = np.power(col(4), 0.7)
-    C2 = np.power(col(5), 0.8)
-    C3 = np.power(col(6), 0.8)
-    C4 = np.power(col(7), 0.8)
-    C5 = col(8)
-    C6 = col(9)
-    C7p = np.power(col(10), 0.38)
-    MWC7p = np.power(col(11), 0.9)
-    Tres = col(12)
+    # Force numeric conversion (safe)
+    df = df.apply(pd.to_numeric, errors="coerce")
+
+    H2S = np.power(df["x_H2S (%)"], 0.8)
+    Co2 = np.power(df["x_CO2 (%)"], 1.38)
+    N2  = df["x_N2 (%)"]
+
+    C1 = np.power(df["x_C1 (%)"], 0.7)
+    C2 = np.power(df["x_C2 (%)"], 0.8)
+    C3 = np.power(df["x_C3 (%)"], 0.8)
+    C4 = np.power(df["x_C4 (%)"], 0.8)
+
+    C5 = df["x_C5 (%)"]
+    C6 = df["x_C6 (%)"]
+
+    C7p   = np.power(df["x_C7+ (%)"], 0.38)
+    MWC7p = np.power(df["MW_C7+"], 0.9)
+
+    Tres = df["Temperature (C)"]
 
     MW_oil1 = (
-        col(1) * 34.1
-        + col(2) * 44.01
-        + col(4) * 16.04
-        + col(5) * 30.07
-        + col(3) * 28.0134
-        + col(6) * 44.1
-        + col(7) * 58.16
-        + col(8) * 72.15
-        + col(9) * 86.18
-        + col(10) * col(11)
+        df["x_H2S (%)"] * 34.1
+        + df["x_CO2 (%)"] * 44.01
+        + df["x_C1 (%)"] * 16.04
+        + df["x_C2 (%)"] * 30.07
+        + df["x_N2 (%)"] * 28.0134
+        + df["x_C3 (%)"] * 44.1
+        + df["x_C4 (%)"] * 58.16
+        + df["x_C5 (%)"] * 72.15
+        + df["x_C6 (%)"] * 86.18
+        + df["x_C7+ (%)"] * df["MW_C7+"]
     ) / 100.0
+    
     MW_oil = np.power(MW_oil1, -2)
-
-    MW_ap_C7p1 = col(10) * col(11) / 100.0
-    MW_ap_C7p = np.power(MW_ap_C7p1, -1.9)
-
-    frn1 = (1 + col(3) + col(4)) / (1 + col(1) + col(2) + col(5) + col(6) + col(7) + col(8) + col(9))
+    
+    MW_ap_C7p1 = df["x_C7+ (%)"] * df["MW_C7+"] / 100.0
+    MW_ap_C7p  = np.power(MW_ap_C7p1, -1.9)
+    
+    frn1 = (1 + df["x_N2 (%)"] + df["x_C1 (%)"]) / (
+        1 + df["x_H2S (%)"] + df["x_CO2 (%)"]
+        + df["x_C2 (%)"] + df["x_C3 (%)"]
+        + df["x_C4 (%)"] + df["x_C5 (%)"]
+        + df["x_C6 (%)"]
+    )
+    
     frn = np.power(frn1, 0.63)
-
-    EVP1 = np.exp(8.243 / (1 + 0.002177 * col(12)) - 10.91)
+    
+    EVP1 = np.exp(8.243 / (1 + 0.002177 * Tres) - 10.91)
     EVP = EVP1 / 14.7
-
-    Tsq = np.power(col(12), 1.9)
+    
+    Tsq = np.power(Tres, 1.9)
 
     # Compute Pred exactly as in R (even if RF may/may not use it; keep for fidelity)
     A0 = -9092.137474
@@ -317,6 +327,7 @@ st.markdown("---")
 st.markdown(
     "**Reference:** Sinha, U., Dindoruk, B., & Soliman, M. (2021). Prediction of CO2 Minimum Miscibility Pressure Using an Augmented Machine-Learning-Based Model. SPE Journal, 1-13."
 )
+
 
 
 
