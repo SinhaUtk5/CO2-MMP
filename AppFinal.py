@@ -285,6 +285,8 @@ REQUIRED_COLS = [
     "x_C4 (%)", "x_C5 (%)", "x_C6 (%)", "x_C7+ (%)", "MW c7+", "Tres (F)"
 ]
 
+uploaded = st.file_uploader("Upload the input CSV file here", type=["csv"])
+
 if uploaded is not None:
     try:
         # 1) Try reading with header (most common)
@@ -341,5 +343,6 @@ st.markdown("---")
 st.markdown(
     "**Reference:** Sinha, U., Dindoruk, B., & Soliman, M. (2021). Prediction of CO2 Minimum Miscibility Pressure Using an Augmented Machine-Learning-Based Model. SPE Journal, 1-13."
 )
+
 
 
