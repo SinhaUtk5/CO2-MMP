@@ -4,10 +4,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from PIL import Image
-import joblib
-import xgboost as xgb
 import json
-import io
 
 st.set_page_config(page_title="UH-MMP Calculator", layout="wide")
 
@@ -46,25 +43,22 @@ APP_DIR = Path(__file__).resolve().parent
 def show_resized_image(img_name: str, target_height: int = 200):
     img_path = APP_DIR / img_name
     if not img_path.exists():
-        st.warning(
-            f"Missing image file: {img_name} (place it next to this app if you want it shown)."
-        )
+        st.warning(f"Missing image file: {img_name} (place it next to this app if you want it shown).")
         return
     img = Image.open(img_path)
     w, h = img.size
     new_h = target_height
     new_w = int(w * (new_h / h))
-    img_resized = img.resize((new_w, new_h))
-    st.image(img_resized)
+    st.image(img.resize((new_w, new_h)))
 
 
-col1, col2 = st.columns([1, 1])
-with col1:
+c1, c2 = st.columns([1, 1])
+with c1:
     show_resized_image("dindoruk_birol_2023_ns.png", 180)
     st.markdown(
         "**Dr. Birol Dindoruk**  \nProfessor  \nHarold Vance Department of Petroleum Engineering,  \nTexas A&M University"
     )
-with col2:
+with c2:
     show_resized_image("Utk.jpeg", 180)
     st.markdown(
         "**Utkarsh Sinha**  \nVolunteer Research Associate  \nInteraction of Phase-Behavior and Flow (IPB&F) Consortium"
@@ -73,86 +67,89 @@ with col2:
 st.divider()
 
 # --------------------------
-# Model loading utilities
+# RF JSON model loader + inference
 # --------------------------
-MODEL_JSON_PATH = "mmp_model_full.json"  # preferred per your note
-MODEL_JOBLIB_PATH = "mmp-rf-SL-final.joblib"  # fallback if you used joblib
+MODEL_JSON_PATH = APP_DIR / "mmp_model_full.json"
 
 
 @st.cache_resource
-def try_load_model(
-    json_path: str = MODEL_JSON_PATH, joblib_path: str = MODEL_JOBLIB_PATH
-):
+def load_rf_json_model(path: Path) -> dict:
+    if not path.exists():
+        raise FileNotFoundError(f"Missing RF JSON model file: {path.name} (place it next to the app).")
+
+    with open(path, "r", encoding="utf-8") as f:
+        model = json.load(f)
+
+    # Minimal validation
+    if model.get("model_type") not in {"random_forest_regressor", "rf_regressor", "random_forest"}:
+        raise ValueError(
+            "JSON model does not look like a Random Forest JSON.\n"
+            "Expected model_type in {'random_forest_regressor','rf_regressor','random_forest'}."
+        )
+    if "trees" not in model or not isinstance(model["trees"], list) or len(model["trees"]) == 0:
+        raise ValueError("JSON model must contain a non-empty list: model['trees'].")
+
+    return model
+
+
+def _predict_tree(nodes: list, x_row: np.ndarray) -> float:
     """
-    Tries to load model in this order:
-      1) xgboost.Booster() from JSON (xgboost.save_model(..., format='json'))
-      2) sklearn-like model via joblib (RandomForestRegressor saved with joblib.dump)
-    Returns a tuple: (model_object, model_type) where model_type is one of {'xgb_booster', 'sklearn'}.
+    One tree prediction for one row.
+    Expected node format:
+      - internal node: {"feature": int, "threshold": float, "left": int, "right": int}
+      - leaf node: {"value": float}
     """
-    # 1) Try to load as XGBoost Booster JSON
-    json_file = Path(json_path)
-    if json_file.exists():
-        try:
-            booster = xgb.Booster()
-            booster.load_model(str(json_file))
-            return booster, "xgb_booster"
-        except Exception as e:
-            # not xgboost JSON or failed load — continue to try joblib
-            st.warning(
-                f"Found {json_file}, but failed to load as xgboost.Booster(): {e}"
-            )
-
-    # 2) Try joblib (sklearn)
-    joblib_file = Path(joblib_path)
-    if joblib_file.exists():
-        try:
-            obj = joblib.load(str(joblib_file))
-            return obj, "sklearn"
-        except Exception as e:
-            st.warning(f"Found {joblib_file}, but failed to load via joblib: {e}")
-
-    # 3) If nothing found, raise
-    raise FileNotFoundError(
-        f"No model found. Place either:\n - an XGBoost JSON model at: {json_path} (preferred),\n"
-        f" - or a scikit-learn model saved with joblib at: {joblib_path}."
-    )
+    idx = 0
+    while True:
+        node = nodes[idx]
+        if "value" in node:
+            return float(node["value"])
+        f = int(node["feature"])
+        thr = float(node["threshold"])
+        idx = int(node["left"]) if x_row[f] <= thr else int(node["right"])
 
 
-# Attempt load and provide useful error messaging
+def rf_predict(model: dict, X: np.ndarray) -> np.ndarray:
+    """
+    Predict y for all rows in X using RF JSON model.
+    Aggregation = mean across trees (standard RF regressor).
+    """
+    trees = model["trees"]
+    n_rows = X.shape[0]
+    preds = np.zeros(n_rows, dtype=float)
+
+    for t in trees:
+        nodes = t["nodes"]
+        # accumulate tree preds
+        for i in range(n_rows):
+            preds[i] += _predict_tree(nodes, X[i])
+
+    preds /= float(len(trees))
+    return preds
+
+
+# Load model
 try:
-    model_obj, model_type = try_load_model()
-except FileNotFoundError as e:
-    st.error(str(e))
-    st.stop()
+    rf_model = load_rf_json_model(MODEL_JSON_PATH)
 except Exception as e:
-    st.error(f"Error while loading model: {e}")
+    st.error(f"Model loading failed: {e}")
     st.stop()
 
-st.success(f"Model loaded ({model_type}).")
-
+st.success("Random Forest JSON model loaded.")
 
 # --------------------------
 # Feature-engineering function (match R code exactly)
 # --------------------------
 def build_cf_from_input(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Accepts the uploaded input dataframe (positional columns as in Shiny app),
-    returns the 'cf' DataFrame with columns:
-    H2S,N2,Co2,C1,C2,C3,C4,C5,C6,C7p,MWC7p,Tres,MW_oil,MW_ap_C7p,frn,Tsq,EVP,Pred_placeholder
-    (we will not compute Pred here — that's part of the R code but final prediction uses the model's y).
+    Input df must be positional columns exactly like Shiny app (>=12 cols), headerless.
+    Returns cf with the same engineered columns used in R.
     """
-    # ensure at least 12 columns (R code referenced up to column 12)
     if df.shape[1] < 12:
-        raise ValueError(
-            "Input CSV must contain at least 12 columns (positional). See Shiny template."
-        )
+        raise ValueError("Input CSV must contain at least 12 columns (positional). Use the template.")
 
-    # Convert to numeric (coerce)
-    arr = df.copy().astype(float).to_numpy()
-    num = arr.shape[0]
-
-    # Indexing: R code uses df[1:num,1] etc where R columns are 1-based.
-    col = lambda i: arr[:, i - 1]  # i is 1-based column index
+    arr = df.astype(float).to_numpy()
+    col = lambda i: arr[:, i - 1]  # R 1-based -> Python 0-based
 
     H2S = np.power(col(1), 0.8)
     N2 = col(3)
@@ -167,7 +164,6 @@ def build_cf_from_input(df: pd.DataFrame) -> pd.DataFrame:
     MWC7p = np.power(col(11), 0.9)
     Tres = col(12)
 
-    # MW_oil1 = ((df[1:num,1 ])*34.1+(df[1:num,2 ])*44.01+df[1:num,4 ]*16.04+df[1:num,5 ]*30.07+df[1:num,3 ]*28.0134+df[1:num,6 ]*44.1+df[1:num,7 ]*58.16+df[1:num,8 ]*72.15+df[1:num,9 ]*86.18+df[1:num,10 ]*df[1:num,11 ])/100
     MW_oil1 = (
         col(1) * 34.1
         + col(2) * 44.01
@@ -180,15 +176,12 @@ def build_cf_from_input(df: pd.DataFrame) -> pd.DataFrame:
         + col(9) * 86.18
         + col(10) * col(11)
     ) / 100.0
-
     MW_oil = np.power(MW_oil1, -2)
 
     MW_ap_C7p1 = col(10) * col(11) / 100.0
     MW_ap_C7p = np.power(MW_ap_C7p1, -1.9)
 
-    frn1 = (1 + col(3) + col(4)) / (
-        1 + col(1) + col(2) + col(5) + col(6) + col(7) + col(8) + col(9)
-    )
+    frn1 = (1 + col(3) + col(4)) / (1 + col(1) + col(2) + col(5) + col(6) + col(7) + col(8) + col(9))
     frn = np.power(frn1, 0.63)
 
     EVP1 = np.exp(8.243 / (1 + 0.002177 * col(12)) - 10.91)
@@ -196,8 +189,7 @@ def build_cf_from_input(df: pd.DataFrame) -> pd.DataFrame:
 
     Tsq = np.power(col(12), 1.9)
 
-    # The R code also defines A0..A17 and computes Part1..Part4 and Pred = Part1+Part2+Part3+Part4.
-    # We'll keep Pred placeholder (not used by model) but compute it to remain faithful.
+    # Compute Pred exactly as in R (even if RF may/may not use it; keep for fidelity)
     A0 = -9092.137474
     A1 = 31.28911371
     A2 = 5.32589172
@@ -219,18 +211,13 @@ def build_cf_from_input(df: pd.DataFrame) -> pd.DataFrame:
 
     Part1 = A0 + A1 * H2S + A2 * Co2 + A3 * N2 + A4 * C1 + A5 * C2 + A6 * C3
     Part2 = A7 * C4 + C5 * A8 + C6 * A9 + C7p * A10 + A11 * frn
-    Part3 = (
-        A12
-        * (MWC7p)
-        * (1 + A13 * (np.power(col(11), -2.8)) * (np.power((col(10) / 100.0), -1.9)))
-    )
+    Part3 = A12 * (MWC7p) * (1 + A13 * np.power(col(11), -2.8) * np.power((col(10) / 100.0), -1.9))
     Part4 = (
-        A14 * (MW_oil)
+        A14 * MW_oil
         + A15 * Tres
         + A15 * A16 * Tsq
-        + A17 * np.exp((8.243 / (1 + 0.002177 * col(12)) - 10.91))
+        + A17 * np.exp(8.243 / (1 + 0.002177 * col(12)) - 10.91)
     )
-
     Pred = Part1 + Part2 + Part3 + Part4
 
     cf = pd.DataFrame(
@@ -258,45 +245,31 @@ def build_cf_from_input(df: pd.DataFrame) -> pd.DataFrame:
     return cf
 
 
-# --------------------------
-# Prediction function
-# --------------------------
-def predict_mmp(df: pd.DataFrame, model_obj, model_type: str) -> pd.DataFrame:
-    """
-    Takes original input dataframe (positional), computes cf, predicts y from model,
-    then computes MMP_predicted_psia using the B0..B4 rational polynomial.
-    Returns original df with appended 'MMP_predicted_psia' column.
-    """
-    cf = build_cf_from_input(df)
+def predict_mmp(df_in: pd.DataFrame) -> pd.DataFrame:
+    cf = build_cf_from_input(df_in)
 
-    # Model expects columns in the same order as cf (H2S,N2, Co2, C1...Pred)
-    X = cf.copy()
+    # Ensure model feature count alignment
+    X = cf.to_numpy(dtype=float)
+    expected = rf_model.get("n_features", X.shape[1])
+    if X.shape[1] != expected:
+        raise ValueError(
+            f"Feature count mismatch. Model expects n_features={expected}, but computed features={X.shape[1]}.\n"
+            f"Computed columns: {list(cf.columns)}"
+        )
 
-    # Predict y using appropriate API
-    if model_type == "xgb_booster":
-        # xgboost Booster expects DMatrix; ensure numeric numpy array
-        dtest = xgb.DMatrix(X.values)
-        y = model_obj.predict(dtest)
-    else:
-        # sklearn-like model (RandomForestRegressor etc.)
-        y = model_obj.predict(X.values)
+    # RF prediction
+    y = rf_predict(rf_model, X).reshape(-1)
 
-    # coerce y to 1D numpy
-    y = np.asarray(y).reshape(-1)
-
-    # B coefficients from the Shiny app
+    # B coefficients from Shiny app
     B0 = 0.0000003179012
     B1 = 0.00033465866193139
     B2 = 4.24937726064401
     B3 = -1926.85329595309
     B4 = 0.002159795
 
-    # In R: df$MMP_predicted_psia<-(B0*y*y*y+B1*y*y+B2*y+B3)/(1+B4*y)
-    numer = B0 * (y**3) + B1 * (y**2) + B2 * y + B3
-    denom = 1.0 + B4 * y
-    mmp = numer / denom
+    mmp = (B0 * y**3 + B1 * y**2 + B2 * y + B3) / (1.0 + B4 * y)
 
-    out = df.copy().reset_index(drop=True)
+    out = df_in.copy().reset_index(drop=True)
     out["MMP_predicted_psia"] = mmp
     return out
 
@@ -310,7 +283,7 @@ st.markdown(
     """
 **Important:** Input CSV must follow the positional column layout used by the original Shiny app.
 At minimum it must have 12 columns (R 1-based):  
-1:H2S-like fraction, 2:CO2 fraction, 3:N2 fraction, 4:C1, 5:C2, 6:C3, 7:C4, 8:C5, 9:C6, 10:C7+, 11:MW C7+, 12:Temperature (Tres)
+1:H2S, 2:CO2, 3:N2, 4:C1, 5:C2, 6:C3, 7:C4, 8:C5, 9:C6, 10:C7+, 11:MW C7+, 12:Tres
 (Use the example template for exact formatting.)
 """
 )
@@ -319,23 +292,21 @@ uploaded = st.file_uploader("Upload the input CSV file here", type=["csv"])
 
 if uploaded is not None:
     try:
-        df_in = pd.read_csv(uploaded, header=None)  # positional columns, so no header
+        df_in = pd.read_csv(uploaded, header=None)
+        st.session_state["input_df"] = df_in
         st.success("CSV loaded. Preview (first 10 rows):")
         st.dataframe(df_in.head(10), use_container_width=True)
-        st.session_state["input_df"] = df_in
     except Exception as e:
         st.error(f"Could not read CSV: {e}")
         st.stop()
 else:
     st.info("Upload a CSV to enable prediction.")
 
-run_clicked = st.button(
-    "Run prediction", type="primary", disabled=("input_df" not in st.session_state)
-)
+run_clicked = st.button("Run prediction", type="primary", disabled=("input_df" not in st.session_state))
 
 if run_clicked:
     try:
-        result_df = predict_mmp(st.session_state["input_df"], model_obj, model_type)
+        result_df = predict_mmp(st.session_state["input_df"])
         st.session_state["result_df"] = result_df
         st.success("Prediction complete.")
     except Exception as e:
@@ -346,7 +317,6 @@ if "result_df" in st.session_state:
     st.subheader("Results (first 20 rows)")
     st.dataframe(st.session_state["result_df"].head(20), use_container_width=True)
 
-    # prepare download
     csv_bytes = st.session_state["result_df"].to_csv(index=False).encode("utf-8")
     st.download_button(
         label="Download the MMP results (CSV)",
@@ -355,9 +325,6 @@ if "result_df" in st.session_state:
         mime="text/csv",
     )
 
-# --------------------------
-# Footer / reference
-# --------------------------
 st.markdown("---")
 st.markdown(
     "**Reference:** Sinha, U., Dindoruk, B., & Soliman, M. (2021). Prediction of CO2 Minimum Miscibility Pressure Using an Augmented Machine-Learning-Based Model. SPE Journal, 1-13."
