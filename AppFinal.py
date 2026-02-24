@@ -143,7 +143,17 @@ def build_cf_from_input(df: pd.DataFrame) -> pd.DataFrame:
     Returns cf with the same engineered columns used in R.
     """
 
+        # Ensure numeric (skip header automatically since pandas already used it)
+    df = df.apply(pd.to_numeric, errors="coerce")
 
+    if df.isnull().any().any():
+        raise ValueError("Non-numeric or missing values detected in input CSV.")
+
+    arr = df.to_numpy(dtype=float)
+
+    # R-style 1-based indexing
+    def col(i):
+        return arr[:, i - 1]
     # Force numeric conversion (safe)
     df = df.apply(pd.to_numeric, errors="coerce")
 
@@ -327,6 +337,7 @@ st.markdown("---")
 st.markdown(
     "**Reference:** Sinha, U., Dindoruk, B., & Soliman, M. (2021). Prediction of CO2 Minimum Miscibility Pressure Using an Augmented Machine-Learning-Based Model. SPE Journal, 1-13."
 )
+
 
 
 
