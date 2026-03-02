@@ -14,7 +14,7 @@ st.set_page_config(page_title="CO2 MMP Calculator", layout="wide")
 st.title("CO2 MMP Calculator")
 st.markdown("A product of Interaction of Phase-Behavior and Flow (IPB&F) Consortium")
 
-st.markdown("**Developed by** - Utkarsh Sinha, Dr. Birol Dindoruk and Dr. M.Y. Soliman")
+st.markdown("**Developed by** - Utkarsh Sinha and Dr. Birol Dindoruk")
 
 st.markdown(
     "[Ref. - Sinha, U., Dindoruk, B., & Soliman, M. (2021). Prediction of CO2 Minimum Miscibility Pressure Using an Augmented Machine-Learning-Based Model. SPE Journal, 1-13.](https://doi.org/10.2118/200326-PA)"
@@ -319,6 +319,7 @@ st.markdown("---")
 st.markdown(
     "**Reference:** Sinha, U., Dindoruk, B., & Soliman, M. (2021). Prediction of CO2 Minimum Miscibility Pressure Using an Augmented Machine-Learning-Based Model. SPE Journal, 1-13."
 )
+
 
 
 
