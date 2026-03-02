@@ -276,11 +276,7 @@ def predict_mmp(df_in: pd.DataFrame) -> pd.DataFrame:
 # --------------------------
 # UI: file uploader, run button, show results & download
 # --------------------------
-st.header("Inputs")
-
 st.header("Input")
-
-st.markdown("**Enter the composition up to C7+, MWC7+ and Temperature (°C).**")
 
 
 uploaded = st.file_uploader("Upload the input CSV file here", type=["csv"])
@@ -315,10 +311,6 @@ if "result_df" in st.session_state:
         mime="text/csv",
     )
 
-st.markdown("---")
-st.markdown(
-    "**Reference:** Sinha, U., Dindoruk, B., & Soliman, M. (2021). Prediction of CO2 Minimum Miscibility Pressure Using an Augmented Machine-Learning-Based Model. SPE Journal, 1-13."
-)
 
 
 
