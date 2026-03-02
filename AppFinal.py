@@ -51,15 +51,16 @@ def show_resized_image(img_name: str, target_height: int = 200):
 
 
 c1, c2 = st.columns([1, 1])
+
 with c1:
-    show_resized_image("dindoruk_birol_2023_ns.png", 180)
-    st.markdown(
-        "**Dr. Birol Dindoruk**  \nProfessor  \nHarold Vance Department of Petroleum Engineering,  \nTexas A&M University"
-    )
-with c2:
     show_resized_image("Utk.jpeg", 180)
     st.markdown(
         "**Utkarsh Sinha**  \nVolunteer Research Associate  \nInteraction of Phase-Behavior and Flow (IPB&F) Consortium"
+    )
+with c2:
+    show_resized_image("dindoruk_birol_2023_ns.png", 180)
+    st.markdown(
+        "**Dr. Birol Dindoruk**  \nProfessor  \nHarold Vance Department of Petroleum Engineering,  \nTexas A&M University"
     )
 
 st.divider()
@@ -318,6 +319,7 @@ st.markdown("---")
 st.markdown(
     "**Reference:** Sinha, U., Dindoruk, B., & Soliman, M. (2021). Prediction of CO2 Minimum Miscibility Pressure Using an Augmented Machine-Learning-Based Model. SPE Journal, 1-13."
 )
+
 
 
 
