@@ -66,7 +66,7 @@ c1, c2 = st.columns([1, 1])
 with c1:
     show_resized_image("Utk.jpeg", 180)
     st.markdown(
-        "**Utkarsh Sinha**  \nVolunteer Research Associate  \nInteraction of Phase-Behavior and Flow (IPB&F) Consortium"
+        "**Utkarsh Sinha**  \nVolunteer Research Fellow  \nInteraction of Phase-Behavior and Flow (IPB&F) Consortium"
     )
 with c2:
     show_resized_image("dindoruk_birol_2023_ns.png", 180)
