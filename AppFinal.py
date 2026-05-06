@@ -9,9 +9,8 @@ import json
 st.set_page_config(page_title="CO2 MMP Calculator", layout="wide")
 
 
-#----------------------------
-Add Logo of TAMU and IPB&F
-#---------------------------------
+# --- Top logos ---------------------------------------------------------------------
+left_space, logo1, logo2, right_space = st.columns([1, 1, 1, 1])
 with logo1:
     if os.path.exists("TAMU.png"):
         st.image("TAMU.png", width=200)
