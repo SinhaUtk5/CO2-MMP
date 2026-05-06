@@ -5,7 +5,7 @@ import numpy as np
 from pathlib import Path
 from PIL import Image
 import json
-
+import os
 st.set_page_config(page_title="CO2 MMP Calculator", layout="wide")
 
 
